@@ -182,6 +182,13 @@ def _get_parser():
                                 'use of IncrementalPCA. May increase workflow '
                                 'duration.'),
                           default=False)
+    optional.add_argument('--extreg',
+                          dest='ext_reg',
+                          action='store_true',
+                          help=('Enables saving of the timeseries of rejected '
+                                'components for use in external GLMs or other '
+                                'purposes'),
+                          default=False)
     optional.add_argument('--fittype',
                           dest='fittype',
                           action='store',
@@ -216,7 +223,7 @@ def tedana_workflow(data, tes, mask=None, mixm=None, ctab=None, manacc=None,
                     out_dir='.', fixed_seed=42, maxit=500, maxrestart=10,
                     debug=False, quiet=False, no_png=False,
                     png_cmap='coolwarm',
-                    low_mem=False, fittype='loglin'):
+                    low_mem=False, fittype='loglin', ext_reg=False):
     """
     Run the "canonical" TE-Dependent ANAlysis workflow.
 
@@ -287,6 +294,9 @@ def tedana_workflow(data, tes, mask=None, mixm=None, ctab=None, manacc=None,
     low_mem : :obj:`bool`, optional
         Enables low-memory processing, including the use of IncrementalPCA.
         May increase workflow duration. Default is False.
+     ext_reg : :obj:`bool`, optional
+        Writes out a text file of rejected components. These can be used as
+        as nuisance regressors in other software. Default is False.
     debug : :obj:`bool`, optional
         Whether to run in debugging mode or not. Default is False.
     quiet : :obj:`bool`, optional
@@ -555,7 +565,13 @@ def tedana_workflow(data, tes, mask=None, mixm=None, ctab=None, manacc=None,
         RepLGR.info("Rejected components' time series were then "
                     "orthogonalized with respect to accepted components' time "
                     "series.")
-
+    if ext_reg:
+        rej = comptable[comptable.classification == 'rejected'].index.values
+        rej_ts = mmix[:, rej]
+        fout = op.join(out_dir, 'external_regressors.txt')
+        np.savetxt(fout, rej_ts)
+        LGR.info('Writing text file of rejected components: {}'.format(op.abspath(fout)))
+        
     io.writeresults(data_oc, mask=mask, comptable=comptable, mmix=mmix,
                     n_vols=n_vols, ref_img=ref_img)
 
